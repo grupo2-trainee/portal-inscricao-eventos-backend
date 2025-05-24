@@ -1,0 +1,73 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Cliente {
+  id     Int    @id @default(autoincrement())
+  nome   String
+  email  String @unique
+  senha  String
+  inscricoesEvento    InscricaoEvento[]
+  inscricoesAtividade InscricaoAtividade[]
+}
+
+model Administrador {
+  id     Int    @id @default(autoincrement())
+  nome   String
+  email  String @unique
+  senha  String
+  eventos Evento[]
+}
+
+model Evento {
+  id                  Int       @id @default(autoincrement())
+  idAdmin             Int
+  nome                String
+  descricao           String
+  dataInicio          DateTime
+  dataFim             DateTime
+  quantidadeInscritos Int
+  administrador       Administrador @relation(fields: [idAdmin], references: [id])
+  atividades          Atividade[]
+  inscricoes          InscricaoEvento[]
+}
+
+model Atividade {
+  id                  Int       @id @default(autoincrement())
+  idEvento            Int
+  nome                String
+  descricao           String
+  dataInicio          DateTime
+  dataFim             DateTime
+  quantidadeInscritos Int
+  evento              Evento     @relation(fields: [idEvento], references: [id])
+  inscricoes          InscricaoAtividade[]
+}
+
+model InscricaoEvento {
+  id         Int     @id @default(autoincrement())
+  idCliente  Int
+  idEvento   Int
+  cliente    Cliente @relation(fields: [idCliente], references: [id])
+  evento     Evento  @relation(fields: [idEvento], references: [id])
+}
+
+model InscricaoAtividade {
+  id         Int        @id @default(autoincrement())
+  idCliente  Int
+  idAtividade Int
+  cliente    Cliente     @relation(fields: [idCliente], references: [id])
+  atividade  Atividade   @relation(fields: [idAtividade], references: [id])
+}

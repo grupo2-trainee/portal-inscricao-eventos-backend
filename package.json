@@ -1,0 +1,28 @@
+{
+  "name": "portal-inscricao-eventos-backend",
+  "version": "1.0.0",
+  "description": "Projeto do desafio trainee - Grupo 2 - Backend",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/grupo2-trainee/portal-inscricao-eventos-backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/grupo2-trainee/portal-inscricao-eventos-backend/issues"
+  },
+  "homepage": "https://github.com/grupo2-trainee/portal-inscricao-eventos-backend#readme",
+  "dependencies": {
+    "@prisma/client": "^6.8.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "prisma": "^6.8.2"
+  }
+}

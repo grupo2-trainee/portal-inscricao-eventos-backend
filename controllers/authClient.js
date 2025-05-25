@@ -1,6 +1,8 @@
 import { PrismaClient } from '../generated/prisma/index.js'
 import bcrypt from 'bcrypt'
+import jwt from 'jsonwebtoken'
 const prisma = new PrismaClient()
+const JWT_SECRET = process.JWT_SECRET || 'includeJr'
 
 const cadClient = async(req, res) => {
     const { nome, email, senha } = req.body
@@ -14,7 +16,7 @@ const cadClient = async(req, res) => {
         const novoUsuario = await prisma.Cliente.create({
             data:{nome, email,senha:senhaCript}
         })
-        res.status(201).json("Usuário Cliente criado com sucesso.")
+        res.status(201).json({sucesso: "Usuário Cliente criado com sucesso."})
     }catch(error){
         res.status(400).json({erro: 'Erro ao criar novo usuário Cliente.', detalhes: error})
     }
@@ -38,7 +40,8 @@ const logClient = async(req, res) => {
         if(!senhaValida){
             return res.status(401).json({erro: 'Senha inválida.'})
         }
-        res.status(200).json("Login realizado com sucesso.")
+        const token = jwt.sign({ id: usuario.id, email: usuario.email }, JWT_SECRET, { expiresIn: '1h' });
+        res.status(200).json({sucesso: "Login realizado com sucesso.", token, id: usuario.id})
     }catch(error){
         res.status(400).json({erro: 'Erro ao realizar login.', detalhes: error})
     }

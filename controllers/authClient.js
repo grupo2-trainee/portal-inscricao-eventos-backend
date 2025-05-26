@@ -40,17 +40,46 @@ const logClient = async(req, res) => {
         if(!senhaValida){
             return res.status(401).json({erro: 'Senha inválida.'})
         }
-        const token = jwt.sign({ id: usuario.id, email: usuario.email }, JWT_SECRET, { expiresIn: '1h' });
-        res.status(200).json({sucesso: "Login realizado com sucesso.", token, id: usuario.id})
+        const token = jwt.sign({ id: usuario.id }, JWT_SECRET, { expiresIn: '15m' });
+        const refreshTokenClient = jwt.sign({ id: usuario.id }, JWT_SECRET, { expiresIn: '7d' });
+        await prisma.refreshTokenCliente.create({
+            data: {
+                token: refreshTokenClient,
+                idUsuario: usuario.id
+            }
+        })
+        res.status(200).json({sucesso: "Login realizado com sucesso.", token, refreshTokenClient})
     }catch(error){
         res.status(400).json({erro: 'Erro ao realizar login.', detalhes: error})
     }
 
 }
 
+const refreshTokenClient = async(req, res) =>{
+    const { token } = req.body
+    if(!token){
+        return res.status(400).json({erro: 'Token é obrigatório.'})
+    }
+    const refreshTokenClient = await prisma.refreshTokenCliente.findUnique({
+        where: { token }
+    })
+    if(!refreshTokenClient){
+        return res.status(403).json({erro: 'Token não encontrado.'})
+
+    }
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        if(err){
+            return res.status(403).json({erro: 'Token inválido.'})
+        }
+        res.status(200).json({sucesso: "Token atualizado com sucesso."})
+    })
+}
+
+
 export default{
     cadClient,
-    logClient
+    logClient,
+    refreshTokenClient
 }
 
 

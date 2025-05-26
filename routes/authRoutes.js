@@ -5,9 +5,11 @@ import authTokens from "../middlewares/authTokens.js"
 
 const router = express.Router()
 
+// ROTAS
 router.get('/home', authTokens.authToken, test.home) // APENAS PARA TESTES
 router.post('/registerAdmin', authAdmin.cadAdmin)
 router.post('/loginAdmin', authAdmin.logAdmin)
-router.post('/refresh',authAdmin.refreshTokenAdmin) 
+router.post('/refreshAdmin',authAdmin.refreshTokenAdmin)
+router.post('/logout',authAdmin.logoutAdmin)
 
 export default router

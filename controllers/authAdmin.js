@@ -1,7 +1,6 @@
 import { PrismaClient } from '../generated/prisma/index.js'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
-import { ref } from 'process'
 const prisma = new PrismaClient()
 const JWT_SECRET = process.JWT_SECRET || 'includeJr'
 
@@ -63,6 +62,7 @@ const logAdmin = async(req, res) =>{
     }
 }
 
+// REFRESH TOKEN ADMIN
 const refreshTokenAdmin = async (req, res)=>{
     const { token } = req.body;
     if(!token){
@@ -79,14 +79,23 @@ const refreshTokenAdmin = async (req, res)=>{
             res.status(403).json({erro: "Autenticação inválida."})
         }
 
-        const accessToken = jwt.sign({ id: usuario.id }, JWT_SECRET, { expiresIn: '15m' })
         res.json({sucesso: "Token validado."})
     })
+}
+
+// LOGOUT ADMIN
+const logoutAdmin = async (req, res)=>{
+    const { token } = req.body
+    
+    await prisma.refreshTokenAdmin.deleteMany({where: { token }})
+
+    res.json({sucesso: "Usuário deslogado com sucesso."})
 }
 
 // EXPORTAÇÕES
 export default{
     cadAdmin,
     logAdmin,
-    refreshTokenAdmin
+    refreshTokenAdmin,
+    logoutAdmin
 }

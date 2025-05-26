@@ -1,9 +1,11 @@
 import { PrismaClient } from '../generated/prisma/index.js'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
+import { ref } from 'process'
 const prisma = new PrismaClient()
 const JWT_SECRET = process.JWT_SECRET || 'includeJr'
 
+// CADASTRAR USUÁRIO ADMINISTRADOR
 const cadAdmin = async(req, res) => {
     const { nome, email, senha } = req.body
     if(senha.length < 8){
@@ -23,6 +25,7 @@ const cadAdmin = async(req, res) => {
     }
 }
 
+// LOGIN USUÁRIO ADMINISTRADOR
 const logAdmin = async(req, res) =>{
     const { email, senha } = req.body
     if(!email || !senha){
@@ -43,16 +46,47 @@ const logAdmin = async(req, res) =>{
             res.status(400).json({erro: 'Senha inválida.'})
         }
 
-    const token = jwt.sign({ id: usuario.id, email: usuario.email }, JWT_SECRET, { expiresIn: '1h' });
+        const accessToken = jwt.sign({ id: usuario.id }, JWT_SECRET, { expiresIn: '15m' })
+        const refreshToken = jwt.sign({ id: usuario.id }, JWT_SECRET, {expiresIn: '7d'})
 
-        res.status(200).json({sucesso: 'Login realizado com sucesso.', token, id: usuario.id})
+        await prisma.refreshTokenAdmin.create({
+            data: {
+                token: refreshToken,
+                idUsuario: usuario.id
+            }
+        })
+        
+        res.status(200).json({sucesso: 'Login realizado com sucesso.', accessToken: accessToken, refreshToken: refreshToken})
     }
     catch(error){
         res.status(500).json({erro: 'Erro ao realizar login.', detalhes: error})
     }
 }
 
+const refreshTokenAdmin = async (req, res)=>{
+    const { token } = req.body;
+    if(!token){
+        res.status(403).json({erro: "Usuário sem token."})
+    }
+
+    const refreshToken = await prisma.refreshTokenAdmin.findUnique({where: { token: token }})
+    if(!refreshToken){
+        res.status(403).json({erro: "Usuário não autenticado.", token: refreshToken})
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, usuario)=>{
+        if(err){
+            res.status(403).json({erro: "Autenticação inválida."})
+        }
+
+        const accessToken = jwt.sign({ id: usuario.id }, JWT_SECRET, { expiresIn: '15m' })
+        res.json({sucesso: "Token validado."})
+    })
+}
+
+// EXPORTAÇÕES
 export default{
     cadAdmin,
-    logAdmin
+    logAdmin,
+    refreshTokenAdmin
 }

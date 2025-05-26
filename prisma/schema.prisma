@@ -16,11 +16,12 @@ datasource db {
 
 model Cliente {
   id     Int    @id @default(autoincrement())
-  nome   String
+  nome   String 
   email  String @unique
   senha  String
   inscricoesEvento    InscricaoEvento[]
   inscricoesAtividade InscricaoAtividade[]
+  refreshTokens   RefreshTokenCliente[]
 }
 
 model Administrador {
@@ -29,6 +30,7 @@ model Administrador {
   email  String @unique
   senha  String
   eventos Evento[]
+  refreshTokens   RefreshTokenAdmin[]
 }
 
 model Evento {
@@ -39,7 +41,9 @@ model Evento {
   dataInicio          DateTime
   dataFim             DateTime
   quantidadeInscritos Int
-  administrador       Administrador @relation(fields: [idAdmin], references: [id])
+  cidade              String
+  categoria           String
+  administrador       Administrador @relation(fields: [idAdmin], references: [id], onDelete: Cascade)
   atividades          Atividade[]
   inscricoes          InscricaoEvento[]
 }
@@ -52,7 +56,8 @@ model Atividade {
   dataInicio          DateTime
   dataFim             DateTime
   quantidadeInscritos Int
-  evento              Evento     @relation(fields: [idEvento], references: [id])
+  localizacao         String
+  evento              Evento     @relation(fields: [idEvento], references: [id], onDelete: Cascade)
   inscricoes          InscricaoAtividade[]
 }
 
@@ -60,14 +65,29 @@ model InscricaoEvento {
   id         Int     @id @default(autoincrement())
   idCliente  Int
   idEvento   Int
-  cliente    Cliente @relation(fields: [idCliente], references: [id])
-  evento     Evento  @relation(fields: [idEvento], references: [id])
+  cliente    Cliente @relation(fields: [idCliente], references: [id], onDelete: Cascade)
+  evento     Evento  @relation(fields: [idEvento], references: [id], onDelete: Cascade)
 }
 
 model InscricaoAtividade {
   id         Int        @id @default(autoincrement())
   idCliente  Int
   idAtividade Int
-  cliente    Cliente     @relation(fields: [idCliente], references: [id])
-  atividade  Atividade   @relation(fields: [idAtividade], references: [id])
+  cliente    Cliente     @relation(fields: [idCliente], references: [id], onDelete: Cascade)
+  atividade  Atividade   @relation(fields: [idAtividade], references: [id], onDelete: Cascade)
 }
+
+model RefreshTokenAdmin {
+  id        Int    @id @default(autoincrement())
+  idUsuario Int
+  token     String @unique
+  administrador Administrador   @relation(fields: [idUsuario], references: [id], onDelete: Cascade)
+}
+
+model RefreshTokenCliente {
+  id        Int    @id @default(autoincrement())
+  idUsuario Int
+  token     String @unique
+  cliente   Cliente   @relation(fields: [idUsuario], references: [id], onDelete: Cascade)
+}
+

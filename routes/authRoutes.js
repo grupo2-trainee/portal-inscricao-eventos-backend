@@ -1,4 +1,5 @@
 import express from "express"
+import test from "../controllers/teste.js"
 import authClient from '../controllers/authClient.js'
 import authTokens from "../middlewares/authTokens.js"
 

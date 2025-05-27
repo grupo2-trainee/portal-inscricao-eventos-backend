@@ -71,15 +71,15 @@ const refreshTokenAdmin = async (req, res)=>{
 
     const refreshToken = await prisma.refreshTokenAdmin.findUnique({where: { token: token }})
     if(!refreshToken){
-        res.status(403).json({erro: "Usuário não autenticado.", token: refreshToken})
+        res.status(403).json({erro: "Usuário não autenticado."})
     }
 
-    jwt.verify(token, JWT_SECRET, (err, usuario)=>{
+    jwt.verify(token, JWT_SECRET, (err)=>{
         if(err){
             res.status(403).json({erro: "Autenticação inválida."})
         }
 
-        res.json({sucesso: "Token validado."})
+        res.status(200).json({sucesso: "Token validado."})
     })
 }
 

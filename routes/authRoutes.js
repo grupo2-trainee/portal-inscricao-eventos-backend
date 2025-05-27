@@ -10,6 +10,6 @@ router.get('/home', authTokens.authToken, test.home) // APENAS PARA TESTES
 router.post('/registerAdmin', authAdmin.cadAdmin)
 router.post('/loginAdmin', authAdmin.logAdmin)
 router.post('/refreshAdmin',authAdmin.refreshTokenAdmin)
-router.post('/logout',authAdmin.logoutAdmin)
+router.post('/logoutAdmin',authAdmin.logoutAdmin)
 
 export default router

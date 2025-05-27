@@ -45,7 +45,7 @@ const logAdmin = async(req, res) =>{
             res.status(400).json({erro: 'Senha inválida.'})
         }
 
-        const accessToken = jwt.sign({ id: usuario.id }, JWT_SECRET, { expiresIn: '15m' })
+        const accessToken = jwt.sign({ id: usuario.id, type: "ADMIN" }, JWT_SECRET, { expiresIn: '15m' })
         const refreshToken = jwt.sign({ id: usuario.id }, JWT_SECRET, {expiresIn: '7d'})
 
         await prisma.refreshTokenAdmin.create({

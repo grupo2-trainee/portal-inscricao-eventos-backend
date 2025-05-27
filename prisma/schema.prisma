@@ -90,3 +90,4 @@ model RefreshTokenCliente {
   token     String @unique
   cliente   Cliente   @relation(fields: [idUsuario], references: [id], onDelete: Cascade)
 }
+

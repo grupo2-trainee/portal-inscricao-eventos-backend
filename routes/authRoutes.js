@@ -1,8 +1,15 @@
 import express from "express"
-import authController from '../controllers/authController.js'
+import test from "../controllers/teste.js"
+import authAdmin from "../controllers/authAdmin.js"
+import authTokens from "../middlewares/authTokens.js"
 
 const router = express.Router()
 
-router.get('/home', authController.home)
+// ROTAS
+router.get('/home', authTokens.authToken, test.home) // APENAS PARA TESTES
+router.post('/registerAdmin', authAdmin.cadAdmin)
+router.post('/loginAdmin', authAdmin.logAdmin)
+router.post('/refreshAdmin',authAdmin.refreshTokenAdmin)
+router.post('/logoutAdmin',authAdmin.logoutAdmin)
 
 export default router

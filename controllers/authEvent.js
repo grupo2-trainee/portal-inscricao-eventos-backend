@@ -56,6 +56,64 @@ const cadEvent = async(req,res)=>{
     }
 }
 
+const remEvent = async(req, res)=>{
+    const {nome} = req.body
+
+    if(!nome){
+        res.status(400).json({erro: 'É necessario preencher o campo'})
+    }
+    try {
+        const evento = await prisma.evento.findUnique({
+            where: { nome }
+        })
+
+        if (!evento) {
+            return res.status(404).json({ erro: 'Evento não encontrado.' })
+        }
+
+        await prisma.evento.delete({
+            where: { nome }
+        })
+
+        res.status(200).json({ sucesso: 'Evento removido com sucesso.' })
+    } catch (erro) {
+        res.status(500).json({ erro: 'Erro ao remover evento.', detalhes: erro })
+    }
+    
+}
+
+const ediEvent = async (req, res) => {
+  const { nome, descricao, dataInicio, dataFim, categoria, cidade } = req.body
+
+  if (!nome) {
+    res.status(400).json({ erro: 'É necessário preencher o campo nome.' })
+  }
+
+  try {
+    const evento = await prisma.evento.findUnique({ where: { nome } })
+    if (!evento) {
+      res.status(404).json({ erro: 'Evento não encontrado.' })
+    }
+
+    const eventoAtualizado = await prisma.evento.update({
+      where: { nome },
+      data: {
+        descricao,
+        dataInicio: new Date(dataInicio),
+        dataFim: new Date(dataFim),
+        categoria,
+        cidade
+      }
+    })
+
+    res.status(200).json({ sucesso: 'Evento editado com sucesso.', evento: eventoAtualizado })
+  } catch (erro) {
+    res.status(500).json({ erro: 'Erro ao editar evento.', detalhes: erro.message })
+  }
+}
+
 export default {
+    ediEvent,
+    remEvent,
     cadEvent
 }

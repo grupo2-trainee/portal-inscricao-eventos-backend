@@ -8,5 +8,7 @@ const router = express.Router()
 // ROTAS
 router.get('/', authTokens.authTokenAdmin, test.home) // APENAS PARA TESTES
 router.post('/cadEvento', authEvent.cadEvent)
+router.patch('/ediEvento',authEvent.ediEvent)
+router.delete('/remEvento',authEvent.remEvent)
 
 export default router

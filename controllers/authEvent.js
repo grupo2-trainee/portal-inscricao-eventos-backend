@@ -105,7 +105,7 @@ const ediEvent = async (req, res) => {
         return res.status(400).json({ erro: 'Dados inválidos.' })
     }
 
-    if(nome.length < 4){
+    if(nome && nome.length < 4){
         return res.status(400).json({erro: 'Nome do evento deve ter no mínimo 4 caracteres.'})
     }
 
@@ -131,13 +131,13 @@ const ediEvent = async (req, res) => {
     if(cidade != null) dataEdit.cidade = cidade
 
     try {
-        const evento = await prisma.evento.findUnique({ where: { id, idAdmin } })
-        if (!evento) {
+        const evento = await prisma.evento.findUnique({ where: { id } })
+        if (!evento || evento.idAdmin != idAdmin) {
             return res.status(404).json({ erro: 'Evento não encontrado.' })
         }
 
         const eventoAtualizado = await prisma.evento.update({
-            where: { id, idAdmin },
+            where: { id },
             data: dataEdit
         })
 
@@ -147,9 +147,45 @@ const ediEvent = async (req, res) => {
     }
 }
 
+//LISTAR EVENTOS
+const listEvent = async (req, res) => {
+    const { categoria, refreshToken } = req.body
+    const listaCategorias = categoria ? categoria.split(',') : [];
+
+    if(!refreshToken){
+        return res.status(403).json({erro: 'Usuário não autenticado.'})
+    }
+
+    let idAdmin
+    try {
+        const decodedToken = jwt.verify(refreshToken, JWT_SECRET)
+        idAdmin = decodedToken.id
+
+    } catch (err) {
+        return res.status(403).json({ erro: 'Token inválido ou expirado.' })
+    }
+
+    const filtro = {
+        idAdmin,
+        ...listaCategorias.length > 0 &&{
+            categoria: {
+                in: listaCategorias
+            }
+        }
+    }
+
+    const eventos = await prisma.evento.findMany({
+        where: filtro,
+        orderBy: {dataInicio: 'asc'}
+    })
+
+    return res.status(200).json({"Lista de eventos": eventos})
+}
+
 // EXPORTAÇÕES
 export default {
     ediEvent,
     remEvent,
-    cadEvent
+    cadEvent,
+    listEvent
 }

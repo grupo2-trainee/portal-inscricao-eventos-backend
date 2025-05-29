@@ -119,12 +119,9 @@ const remActiv = async(req, res)=>{
     
 }
 
+// EDITAR ATIVIDADES
 const ediActiv = async(req, res) => {
     const {id, idEvento, refreshToken, nome, descricao, dataInicio, dataFim, localizacao } = req.body
-
-    if(!nome || !dataFim || !dataInicio || !descricao || !localizacao ||!idEvento){
-        return res.status(400).json({erro:"O preenchimento de todos os campos é obrigatório!"})
-    }
 
     if(nome.length < 4){
         return res.status(400).json({erro: 'Nome do evento deve ter no mínimo 4 caracteres.'})
@@ -147,11 +144,6 @@ const ediActiv = async(req, res) => {
     } catch (erro) {
         return res.status(403).json({ erro: 'Token inválido ou expirado.' })
     }
-
-    
-    if (!atividade) {
-        return res.status(404).json({ erro: 'Atividade não encontrado.' })
-    }
         
     const dataEdit = {}
     if(nome != null)dataEdit.nome = nome
@@ -162,22 +154,27 @@ const ediActiv = async(req, res) => {
 
     try {
         const atividade = await prisma.atividade.findUnique({ where: { id } })
-        if (!evento || evento.idAdmin != idAdmin) {
-            return res.status(404).json({ erro: 'Evento não encontrado.' })
+        if (!atividade || atividade.idEvento != idEvento) {
+            return res.status(404).json({ erro: 'Atividade não encontrado.' })
         }
 
-        const atividadeEditada = await prisma.evento.update({
+        if (!atividade) {
+            return res.status(404).json({ erro: 'Atividade não encontrado.' })
+        }
+
+        const atividadeEditada = await prisma.atividade.update({
             where: { id },
             data: dataEdit
         })
 
-        return res.status(200).json({ sucesso: 'Evento editado com sucesso.'})
+        return res.status(200).json({ sucesso: 'Atividade editado com sucesso.'})
     } catch (erro) {
-        return res.status(500).json({ erro: 'Erro ao editar evento.', detalhes: erro.message })
+        return res.status(500).json({ erro: 'Erro ao editar atividade.', detalhes: erro.message })
     }
 
 }
 
+// LISTAR ATIVIDADES
 const listActiv = async (req, res) => {
     const { idEvento, refreshToken} = req.body
     if(!idEvento || !refreshToken){
@@ -213,6 +210,7 @@ const listActiv = async (req, res) => {
         return res.status(500).json({ erro: 'Erro ao listar atividades.', detalhes: erro.message })
     }
 }
+
 // EXPORTAÇÕES
 export default{
     cadActiv,

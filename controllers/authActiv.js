@@ -119,8 +119,104 @@ const remActiv = async(req, res)=>{
     
 }
 
+const ediActiv = async(req, res) => {
+    const {id, idEvento, refreshToken, nome, descricao, dataInicio, dataFim, localizacao } = req.body
+
+    if(!nome || !dataFim || !dataInicio || !descricao || !localizacao ||!idEvento){
+        return res.status(400).json({erro:"O preenchimento de todos os campos é obrigatório!"})
+    }
+
+    if(nome.length < 4){
+        return res.status(400).json({erro: 'Nome do evento deve ter no mínimo 4 caracteres.'})
+    }
+
+    if(dataInicio > dataFim){
+        return res.status(400).json({erro: 'Data de início deve ser anterior ou na mesma data da data de fim.'})
+    }
+
+
+    if(!id || !refreshToken || !idEvento){
+        return res.status(400).json({erro: 'Dados inválidos.'})
+    }
+
+    let idAdmin
+    try {
+        const decodedToken = jwt.verify(refreshToken, JWT_SECRET)
+        idAdmin = decodedToken.id
+
+    } catch (erro) {
+        return res.status(403).json({ erro: 'Token inválido ou expirado.' })
+    }
+
+    
+    if (!atividade) {
+        return res.status(404).json({ erro: 'Atividade não encontrado.' })
+    }
+        
+    const dataEdit = {}
+    if(nome != null)dataEdit.nome = nome
+    if(descricao != null)dataEdit.descricao = descricao
+    if(dataInicio != null)dataEdit.dataInicio = dataInicio
+    if(dataFim != null)dataEdit.dataFim = dataFim
+    if(localizacao != null)dataEdit.localizacao = localizacao
+
+    try {
+        const atividade = await prisma.atividade.findUnique({ where: { id } })
+        if (!evento || evento.idAdmin != idAdmin) {
+            return res.status(404).json({ erro: 'Evento não encontrado.' })
+        }
+
+        const atividadeEditada = await prisma.evento.update({
+            where: { id },
+            data: dataEdit
+        })
+
+        return res.status(200).json({ sucesso: 'Evento editado com sucesso.'})
+    } catch (erro) {
+        return res.status(500).json({ erro: 'Erro ao editar evento.', detalhes: erro.message })
+    }
+
+}
+
+const listActiv = async (req, res) => {
+    const { idEvento, refreshToken} = req.body
+    if(!idEvento || !refreshToken){
+        return res.status(400).json({erro: 'Dados inválidos.'})
+    }
+    let idAdmin
+
+    try {
+        const decodedToken = jwt.verify(refreshToken, JWT_SECRET)
+        idAdmin = decodedToken.id
+
+    } catch (erro) {
+        return res.status(403).json({ erro: 'Token inválido ou expirado.' })
+    }
+    try {
+        const evento = await prisma.evento.findUnique({
+            where: { 
+                id: idEvento,
+                idAdmin
+             }
+        })
+
+        if (!evento) {
+            return res.status(404).json({ erro: 'Evento não encontrado.' })
+        }
+
+        const atividades = await prisma.atividade.findMany({
+            where: { idEvento }
+        })
+
+        return res.status(200).json({sucesso: 'Atividades listadas com sucesso.', atividades})
+    } catch (erro) {
+        return res.status(500).json({ erro: 'Erro ao listar atividades.', detalhes: erro.message })
+    }
+}
 // EXPORTAÇÕES
 export default{
     cadActiv,
-    remActiv
+    remActiv,
+    ediActiv,
+    listActiv
 }

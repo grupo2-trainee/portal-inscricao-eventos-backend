@@ -14,5 +14,7 @@ router.delete('/remEvento', authEvent.remEvent)
 router.get('/listEvento', authEvent.listEvent)
 router.post('/cadAtividade', authActiv.cadActiv)
 router.delete('/remAtividade', authActiv.remActiv)
+router.get('/listAtividade', authActiv.listActiv)
+router.patch('/ediAtividade', authActiv.ediActiv)
 
 export default router

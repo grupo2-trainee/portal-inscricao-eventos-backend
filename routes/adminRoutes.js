@@ -2,6 +2,7 @@ import express from "express"
 import test from "../controllers/teste.js"
 import authTokens from "../middlewares/authTokens.js"
 import authEvent from "../controllers/authEvent.js"
+import authActiv from "../controllers/authActiv.js"
 
 const router = express.Router()
 
@@ -11,5 +12,7 @@ router.post('/cadEvento', authEvent.cadEvent)
 router.patch('/ediEvento', authEvent.ediEvent)
 router.delete('/remEvento', authEvent.remEvent)
 router.get('/listEvento', authEvent.listEvent)
+router.post('/cadAtividade', authActiv.cadActiv)
+router.delete('/remAtividade', authActiv.remActiv)
 
 export default router

@@ -7,7 +7,8 @@ import authActiv from "../controllers/authActiv.js"
 const router = express.Router()
 
 // ROTAS
-router.get('/', authTokens.authTokenAdmin, test.home) // APENAS PARA TESTES
+router.get('/', test.home) // APENAS PARA TESTES
+router.post('/mid', authTokens.authTokenAdmin)
 router.post('/cadEvento', authEvent.cadEvent)
 router.patch('/ediEvento', authEvent.ediEvent)
 router.delete('/remEvento', authEvent.remEvent)

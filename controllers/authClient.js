@@ -46,7 +46,7 @@ const logClient = async(req, res) => {
         }
 
         const accessToken = jwt.sign({ id: usuario.id, type: "CLIENT" }, JWT_SECRET, { expiresIn: '15m' });
-        const refreshToken = jwt.sign({ id: usuario.id }, JWT_SECRET, { expiresIn: '7d' });
+        const refreshToken = jwt.sign({ id: usuario.id, type: "CLIENT" }, JWT_SECRET, { expiresIn: '7d' });
 
         await prisma.refreshTokenCliente.create({
             data: {

@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken'
 const JWT_SECRET = process.env.JWT_SECRET || 'includeJr'
 
 // AUTENTICAÇÃO DE LOGIN ADMIN
-const authTokenAdmin = (req, res, next) => {
+const authTokenAdmin = (req, res) => {
     const token = req.headers['authorization']   
 
     if (!token){
@@ -15,18 +15,19 @@ const authTokenAdmin = (req, res, next) => {
         res.status(403).json({erro: 'Autenticação negada'})
     }
 
-    jwt.verify(token, JWT_SECRET, (err, usuario) => {
+    jwt.verify(token, JWT_SECRET, (err) => {
     if (err) {
         res.status(403).json({ erro: 'Token de autenticação inválido' })
     } 
     
-    req.usuario = usuario
-    next()
+    return res.status(200).json({
+        redirectTo: '/',
+    });
   });
 };
 
 // AUTENTICAÇÃO DE LOGIN CLIENTE
-const authTokenClient = (req, res, next) => {
+const authTokenClient = (req, res) => {
     const token = req.headers['authorization']   
 
     if (!token){
@@ -39,13 +40,14 @@ const authTokenClient = (req, res, next) => {
         res.status(403).json({erro: 'Autenticação negada'})
     }
 
-    jwt.verify(token, JWT_SECRET, (err, usuario) => {
+    jwt.verify(token, JWT_SECRET, (err) => {
     if (err) {
         res.status(403).json({ erro: 'Token de autenticação inválido' })
     } 
     
-    req.usuario = usuario
-    next()
+    return res.status(200).json({
+        redirectTo: '/',
+    });
   });
 };
 

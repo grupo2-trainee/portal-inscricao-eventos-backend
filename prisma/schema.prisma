@@ -33,6 +33,25 @@ model Administrador {
   refreshTokens   RefreshTokenAdmin[]
 }
 
+enum categoriaEvento{
+  academico
+  cientifico
+  corporativo
+  curso
+  entretenimento
+  religioso
+  esportivo
+  exibicao
+  networking
+  outro
+}
+
+enum tipoEvento{
+  online
+  presencial
+  hibrido
+}
+
 model Evento {
   id                  Int       @id @default(autoincrement())
   idAdmin             Int
@@ -42,7 +61,9 @@ model Evento {
   dataFim             DateTime
   quantidadeInscritos Int
   cidade              String
-  categoria           String
+  categoria           categoriaEvento
+  tipo                tipoEvento
+  imagemURL           String
   administrador       Administrador @relation(fields: [idAdmin], references: [id], onDelete: Cascade)
   atividades          Atividade[]
   inscricoes          InscricaoEvento[]
@@ -55,6 +76,7 @@ model Atividade {
   descricao           String
   dataInicio          DateTime
   dataFim             DateTime
+  maximoInscritos     Int
   quantidadeInscritos Int
   localizacao         String
   evento              Evento     @relation(fields: [idEvento], references: [id], onDelete: Cascade)

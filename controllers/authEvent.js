@@ -130,7 +130,7 @@ const remEvent = async(req, res)=>{
 
 // EDITAR EVENTO E ATIVIDADES
 const ediEvent = async (req, res) => {
-    const {id,nome,descricao,dataInicio,dataFim,categoria,cidade,tipo,imagemURL,atividades,refreshToken} = req.body
+    const {id,nome,descricao,dataInicio,dataFim,categoria,cidade,tipo,imagemURL,atividades,atividadesRemovidas,refreshToken} = req.body
 
     if (!id) {
         return res.status(400).json({ erro: 'Dados inválidos.' })
@@ -174,6 +174,18 @@ const ediEvent = async (req, res) => {
             data: dataEdit
         })
 
+        if (atividadesRemovidas && Array.isArray(atividadesRemovidas)) {
+            for (const idAtividade of atividadesRemovidas) {
+                const atividade = await prisma.atividade.findUnique({ where: { id: idAtividade } })
+                
+                if (atividade && atividade.idEvento === evento.id) {
+                    await prisma.atividade.delete({
+                        where: { id: idAtividade } 
+                    })
+                }
+            }
+        }
+
         if (atividades && Array.isArray(atividades)) {
             for (const atividade of atividades) {
                 const {id: idAtividade,nome,descricao,dataInicio,dataFim,maximoInscritos,localizacao} = atividade
@@ -214,10 +226,9 @@ const ediEvent = async (req, res) => {
     }
 }
 
-//LISTAR EVENTOS
+//LISTAR EVENTO E ATIVIDADES
 const listEvent = async (req, res) => {
-    const { categoria, refreshToken } = req.body
-    const listaCategorias = categoria ? categoria.split(',') : []
+    const { refreshToken } = req.body
 
     if(!refreshToken){
         return res.status(403).json({erro: 'Usuário não autenticado.'})
@@ -232,18 +243,10 @@ const listEvent = async (req, res) => {
         return res.status(403).json({ erro: 'Token inválido ou expirado.' })
     }
 
-    const filtro = {
-        idAdmin,
-        ...listaCategorias.length > 0 &&{
-            categoria: {
-                in: listaCategorias
-            }
-        }
-    }
-
     const eventos = await prisma.evento.findMany({
-        where: filtro,
-        orderBy: {dataInicio: 'asc'}
+        where: {idAdmin},
+        orderBy: {dataInicio: 'asc'},
+        include: {atividades: true}
     })
 
     return res.status(200).json({"Lista de eventos": eventos})

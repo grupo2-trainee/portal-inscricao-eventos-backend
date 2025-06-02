@@ -21,7 +21,6 @@ model Cliente {
   senha  String
   inscricoesEvento    InscricaoEvento[]
   inscricoesAtividade InscricaoAtividade[]
-  refreshTokens   RefreshTokenCliente[]
 }
 
 model Administrador {
@@ -30,7 +29,6 @@ model Administrador {
   email  String @unique
   senha  String
   eventos Evento[]
-  refreshTokens   RefreshTokenAdmin[]
 }
 
 enum categoriaEvento{
@@ -98,18 +96,3 @@ model InscricaoAtividade {
   cliente    Cliente     @relation(fields: [idCliente], references: [id], onDelete: Cascade)
   atividade  Atividade   @relation(fields: [idAtividade], references: [id], onDelete: Cascade)
 }
-
-model RefreshTokenAdmin {
-  id        Int    @id @default(autoincrement())
-  idUsuario Int
-  token     String @unique
-  administrador Administrador   @relation(fields: [idUsuario], references: [id], onDelete: Cascade)
-}
-
-model RefreshTokenCliente {
-  id        Int    @id @default(autoincrement())
-  idUsuario Int
-  token     String @unique
-  cliente   Cliente   @relation(fields: [idUsuario], references: [id], onDelete: Cascade)
-}
-

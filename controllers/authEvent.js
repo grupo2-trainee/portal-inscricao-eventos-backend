@@ -5,7 +5,7 @@ const prisma = new PrismaClient()
 
 // CADASTRAR EVENTO
 const cadEvent = async(req,res)=>{
-    const { nome, descricao, dataInicio, dataFim, categoria, cidade, refreshToken} = req.body
+    const { nome, descricao, dataInicio, dataFim, categoria, cidade, imagemURL, tipo, refreshToken} = req.body
 
     if(nome.length < 4){
         return res.status(400).json({erro: 'Nome do evento deve ter no mínimo 4 caracteres.'})
@@ -15,7 +15,7 @@ const cadEvent = async(req,res)=>{
         return res.status(400).json({erro: 'Data de início deve ser anterior ou na mesma data da data de fim.'})
     }
 
-    if(!cidade || !categoria || !dataInicio || !dataFim || !descricao){
+    if(!cidade || !categoria || !dataInicio || !dataFim || !descricao || !imagemURL || !tipo){
         return res.status(400).json({erro: 'Todos os campos são obrigatórios '})
     }
 
@@ -44,6 +44,8 @@ const cadEvent = async(req,res)=>{
                 quantidadeInscritos,
                 categoria,
                 cidade,
+                tipo,
+                imagemURL,
                 administrador: {
                     connect:{ id: idAdmin }
                 }
@@ -99,7 +101,7 @@ const remEvent = async(req, res)=>{
 
 // EDITAR EVENTO
 const ediEvent = async (req, res) => {
-    const { id, nome, descricao, dataInicio, dataFim, categoria, cidade, refreshToken } = req.body
+    const { id, nome, descricao, dataInicio, dataFim, categoria, cidade, tipo, imagemURL, refreshToken } = req.body
 
     if(!id) {
         return res.status(400).json({ erro: 'Dados inválidos.' })
@@ -129,6 +131,8 @@ const ediEvent = async (req, res) => {
     if(dataFim != null) dataEdit.dataFim = dataFim
     if(categoria != null) dataEdit.categoria = categoria
     if(cidade != null) dataEdit.cidade = cidade
+    if(tipo != null) dataEdit.tipo = tipo
+    if(imagemURL != null) dataEdit.imagemURL = imagemURL
 
     try {
         const evento = await prisma.evento.findUnique({ where: { id } })

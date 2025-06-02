@@ -5,9 +5,9 @@ const prisma = new PrismaClient()
 
 // CADASTRAR ATIVIDADE
 const cadActiv = async(req, res) =>{
-    const { idEvento, nome, descricao, dataInicio, dataFim, localizacao, refreshToken } = req.body
+    const { idEvento, nome, descricao, dataInicio, dataFim, localizacao, maximoInscritos, refreshToken } = req.body
 
-    if(!nome || !dataFim || !dataInicio || !descricao || !localizacao ||!idEvento){
+    if(!nome || !dataFim || !dataInicio || !descricao || !localizacao ||!idEvento ||!maximoInscritos){
         return res.status(400).json({erro:"O preenchimento de todos os campos é obrigatório!"})
     }
 
@@ -52,6 +52,7 @@ const cadActiv = async(req, res) =>{
             descricao,
             dataInicio,
             dataFim,
+            maximoInscritos,
             quantidadeInscritos,
             localizacao,
             evento: {

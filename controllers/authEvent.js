@@ -3,24 +3,24 @@ import jwt from 'jsonwebtoken'
 const JWT_SECRET = process.env.JWT_SECRET || 'includeJr'
 const prisma = new PrismaClient()
 
-// CADASTRAR EVENTO
-const cadEvent = async(req,res)=>{
-    const { nome, descricao, dataInicio, dataFim, categoria, cidade, imagemURL, tipo, refreshToken} = req.body
+// CADASTRAR EVENTO E ATIVIDADES
+const cadEvent = async (req, res) => {
+    const { nome, descricao, dataInicio, dataFim, categoria, cidade, imagemURL, tipo, refreshToken, atividades} = req.body
 
-    if(nome.length < 4){
-        return res.status(400).json({erro: 'Nome do evento deve ter no mínimo 4 caracteres.'})
+    if (!nome || nome.length < 4) {
+        return res.status(400).json({ erro: 'Nome do evento deve ter no mínimo 4 caracteres.' })
     }
 
-    if(dataInicio > dataFim){
-        return res.status(400).json({erro: 'Data de início deve ser anterior ou na mesma data da data de fim.'})
+    if (!descricao || !dataInicio || !dataFim || !categoria || !cidade || !imagemURL || !tipo) {
+        return res.status(400).json({ erro: 'Todos os campos são obrigatórios.' })
     }
 
-    if(!cidade || !categoria || !dataInicio || !dataFim || !descricao || !imagemURL || !tipo){
-        return res.status(400).json({erro: 'Todos os campos são obrigatórios '})
+    if (dataInicio > dataFim) {
+        return res.status(400).json({ erro: 'Data de início deve ser anterior ou igual à data de fim.' })
     }
 
-    if(!refreshToken){
-        return res.status(403).json({erro: 'Usuário não autenticado.'})
+    if (!refreshToken) {
+        return res.status(403).json({ erro: 'Usuário não autenticado.' })
     }
 
     let idAdmin
@@ -32,30 +32,59 @@ const cadEvent = async(req,res)=>{
         return res.status(403).json({ erro: 'Token inválido ou expirado.' })
     }
 
-    const quantidadeInscritos = 0
-
-    try{
-        const novoEvento = await prisma.evento.create({
-            data: {
-                nome,
-                descricao,
-                dataInicio,
-                dataFim,
-                quantidadeInscritos,
-                categoria,
-                cidade,
-                tipo,
-                imagemURL,
-                administrador: {
-                    connect:{ id: idAdmin }
-                }
-            }
+    try {
+        const eventoCriado = await prisma.evento.create({
+        data: {
+            nome,
+            descricao,
+            dataInicio,
+            dataFim,
+            quantidadeInscritos: 0,
+            categoria,
+            cidade,
+            tipo,
+            imagemURL,
+            administrador: {
+            connect: { id: idAdmin },
+            },
+        },
         })
 
-        return res.status(200).json({sucesso: "Evento criado com sucesso.", evento: novoEvento})
+        const idEvento = eventoCriado.id
 
-    }catch(erro){
-        return res.status(500).json({erro: 'Erro ao criar evento.', detalhes: erro})
+        if (atividades && Array.isArray(atividades)) {
+            for (const atividade of atividades) {
+                if (!atividade.nome || !atividade.descricao || !atividade.dataInicio || !atividade.dataFim || !atividade.maximoInscritos || !atividade.localizacao) {
+                    continue
+                }
+
+                try {
+                    await prisma.atividade.create({
+                        data: {
+                            nome: atividade.nome,
+                            descricao: atividade.descricao,
+                            dataInicio: atividade.dataInicio,
+                            dataFim: atividade.dataFim,
+                            maximoInscritos: atividade.maximoInscritos,
+                            quantidadeInscritos: 0,
+                            localizacao: atividade.localizacao,
+                            evento: {
+                                connect: { id: idEvento },
+                            },
+                        },
+                    })
+                }
+
+                catch (erro) {
+                    return res.status(400).json('Erro ao criar atividade:', atividade, erro)
+                }
+            }
+        }
+    
+        return res.status(201).json({"sucesso": "Evento e atividades criados com sucesso."})
+    
+    } catch (erro) {
+        return res.status(500).json({ erro: 'Erro ao criar evento.', detalhes: erro.message })
     }
 }
 
@@ -99,62 +128,107 @@ const remEvent = async(req, res)=>{
     
 }
 
-// EDITAR EVENTO
+// EDITAR EVENTO E ATIVIDADES
 const ediEvent = async (req, res) => {
-    const { id, nome, descricao, dataInicio, dataFim, categoria, cidade, tipo, imagemURL, refreshToken } = req.body
+    const {id,nome,descricao,dataInicio,dataFim,categoria,cidade,tipo,imagemURL,atividades,atividadesRemovidas,refreshToken} = req.body
 
-    if(!id) {
+    if (!id) {
         return res.status(400).json({ erro: 'Dados inválidos.' })
     }
 
-    if(nome && nome.length < 4){
-        return res.status(400).json({erro: 'Nome do evento deve ter no mínimo 4 caracteres.'})
+    if (nome && nome.length < 4) {
+        return res.status(400).json({ erro: 'Nome do evento deve ter no mínimo 4 caracteres.' })
     }
 
-    if(dataInicio > dataFim){
-        return res.status(400).json({erro: 'Data de início deve ser anterior ou na mesma data da data de fim.'})
+    if (dataInicio && dataFim && new Date(dataInicio) > new Date(dataFim)) {
+        return res.status(400).json({ erro: 'Data de início deve ser anterior ou igual à data de fim.' })
     }
 
     let idAdmin
     try {
         const decodedToken = jwt.verify(refreshToken, JWT_SECRET)
         idAdmin = decodedToken.id
-
     } catch (err) {
         return res.status(403).json({ erro: 'Token inválido ou expirado.' })
     }
 
     const dataEdit = {}
-    if(nome != null) dataEdit.nome = nome
-    if(descricao != null) dataEdit.descricao = descricao
-    if(dataInicio != null) dataEdit.dataInicio = dataInicio
-    if(dataFim != null) dataEdit.dataFim = dataFim
-    if(categoria != null) dataEdit.categoria = categoria
-    if(cidade != null) dataEdit.cidade = cidade
-    if(tipo != null) dataEdit.tipo = tipo
-    if(imagemURL != null) dataEdit.imagemURL = imagemURL
+    if (nome != null) dataEdit.nome = nome
+    if (descricao != null) dataEdit.descricao = descricao
+    if (dataInicio != null) dataEdit.dataInicio = dataInicio
+    if (dataFim != null) dataEdit.dataFim = dataFim
+    if (categoria != null) dataEdit.categoria = categoria
+    if (cidade != null) dataEdit.cidade = cidade
+    if (tipo != null) dataEdit.tipo = tipo
+    if (imagemURL != null) dataEdit.imagemURL = imagemURL
 
     try {
         const evento = await prisma.evento.findUnique({ where: { id } })
-        if (!evento || evento.idAdmin != idAdmin) {
-            return res.status(404).json({ erro: 'Evento não encontrado.' })
+
+        if (!evento || evento.idAdmin !== idAdmin) {
+            return res.status(404).json({ erro: 'Evento não encontrado ou acesso negado.' })
         }
 
-        const eventoAtualizado = await prisma.evento.update({
+        await prisma.evento.update({
             where: { id },
             data: dataEdit
         })
 
-        return res.status(200).json({ sucesso: 'Evento editado com sucesso.'})
+        if (atividadesRemovidas && Array.isArray(atividadesRemovidas)) {
+            for (const idAtividade of atividadesRemovidas) {
+                const atividade = await prisma.atividade.findUnique({ where: { id: idAtividade } })
+                
+                if (atividade && atividade.idEvento === evento.id) {
+                    await prisma.atividade.delete({
+                        where: { id: idAtividade } 
+                    })
+                }
+            }
+        }
+
+        if (atividades && Array.isArray(atividades)) {
+            for (const atividade of atividades) {
+                const {id: idAtividade,nome,descricao,dataInicio,dataFim,maximoInscritos,localizacao} = atividade
+
+                const atividadeData = {};
+                if (nome != null) atividadeData.nome = nome
+                if (descricao != null) atividadeData.descricao = descricao
+                if (dataInicio != null) atividadeData.dataInicio = dataInicio
+                if (dataFim != null) atividadeData.dataFim = dataFim
+                if (maximoInscritos != null) atividadeData.maximoInscritos = maximoInscritos
+                if (localizacao != null) atividadeData.localizacao = localizacao
+
+                if (idAtividade) {
+                    const existente = await prisma.atividade.findUnique({
+                        where: { id: idAtividade }
+                    })
+
+                    if (!existente || existente.idEvento !== evento.id) {
+                        continue
+                    }
+                    
+                    await prisma.atividade.update({
+                        where: { id: idAtividade },
+                        data: atividadeData
+                    })
+
+                } 
+                else {
+                    await prisma.atividade.create({ data: atividadeData })
+                }
+            }
+        }
+
+        return res.status(200).json({sucesso: 'Evento e atividades processados com sucesso.'})
+
     } catch (erro) {
         return res.status(500).json({ erro: 'Erro ao editar evento.', detalhes: erro.message })
     }
 }
 
-//LISTAR EVENTOS
+//LISTAR EVENTO E ATIVIDADES
 const listEvent = async (req, res) => {
-    const { categoria, refreshToken } = req.body
-    const listaCategorias = categoria ? categoria.split(',') : [];
+    const { refreshToken } = req.body
 
     if(!refreshToken){
         return res.status(403).json({erro: 'Usuário não autenticado.'})
@@ -169,18 +243,10 @@ const listEvent = async (req, res) => {
         return res.status(403).json({ erro: 'Token inválido ou expirado.' })
     }
 
-    const filtro = {
-        idAdmin,
-        ...listaCategorias.length > 0 &&{
-            categoria: {
-                in: listaCategorias
-            }
-        }
-    }
-
     const eventos = await prisma.evento.findMany({
-        where: filtro,
-        orderBy: {dataInicio: 'asc'}
+        where: {idAdmin},
+        orderBy: {dataInicio: 'asc'},
+        include: {atividades: true}
     })
 
     return res.status(200).json({"Lista de eventos": eventos})

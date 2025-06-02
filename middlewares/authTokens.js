@@ -1,30 +1,30 @@
+import { PrismaClient } from '../generated/prisma/index.js'
 import jwt from 'jsonwebtoken'
 const JWT_SECRET = process.env.JWT_SECRET || 'includeJr'
+const prisma = new PrismaClient()
 
 // AUTENTICAÇÃO DE LOGIN ADMIN
-const authTokenAdmin = (req, res) => {
-    const token = req.headers['authorization']   
-
-    if (!token){
-        res.status(401).json({ erro: 'Usuário não autenticado' })
+const authTokenAdmin = async (req, res, next) => {
+    const { refreshToken } = req.body
+    if(!refreshToken){
+        return res.status(403).json({erro: "Usuário sem token."})
     }
 
-    const decodedToken = jwt.decode(token)
-
-    if(decodedToken.type != "ADMIN"){
-        res.status(403).json({erro: 'Autenticação negada'})
+    let idAdmin
+    try {
+        const decodedToken = jwt.verify(refreshToken, JWT_SECRET)
+        idAdmin = decodedToken.id
+    } catch (err) {
+        return res.status(403).json({ erro: 'Token inválido ou expirado.' })
     }
 
-    jwt.verify(token, JWT_SECRET, (err) => {
-    if (err) {
-        res.status(403).json({ erro: 'Token de autenticação inválido' })
-    } 
-    
-    return res.status(200).json({
-        redirectTo: '/',
-    });
-  });
-};
+    const idUsuario = await prisma.administrador.findUnique({where: { id: idAdmin }})
+    if(!idUsuario){
+        return res.status(403).json({erro: "Usuário não autenticado."})
+    }
+
+    return next()
+}
 
 // AUTENTICAÇÃO DE LOGIN CLIENTE
 const authTokenClient = (req, res) => {

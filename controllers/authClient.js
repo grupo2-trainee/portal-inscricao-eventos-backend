@@ -45,17 +45,9 @@ const logClient = async(req, res) => {
             res.status(401).json({erro: 'Senha inválida.'})
         }
 
-        const accessToken = jwt.sign({ id: usuario.id, type: "CLIENT" }, JWT_SECRET, { expiresIn: '15m' });
-        const refreshToken = jwt.sign({ id: usuario.id, type: "CLIENT" }, JWT_SECRET, { expiresIn: '7d' });
+        const refreshToken = jwt.sign({ id: usuario.id, type: "CLIENT" }, JWT_SECRET, { expiresIn: '8h' });
 
-        await prisma.refreshTokenCliente.create({
-            data: {
-                token: refreshToken,
-                idUsuario: usuario.id
-            }
-        })
-
-        res.status(200).json({sucesso: "Login realizado com sucesso.", accessToken: accessToken, refreshToken: refreshToken})
+        res.status(200).json({sucesso: "Login realizado com sucesso.", refreshToken})
     }catch(error){
         res.status(500).json({erro: 'Erro ao realizar login.', detalhes: error})
     }
@@ -64,25 +56,21 @@ const logClient = async(req, res) => {
 
 // INSCREVE O CLIENTE EM EVENTOS
 const inscEventClient = async (req, res) => {
-    const {idEvento, idCliente, refreshToken} = req.body
-    if(!idEvento || !idCliente || !refreshToken){
+    const {idEvento, refreshToken} = req.body
+    if(!idEvento || !refreshToken){
         return res.status(400).json({erro: 'Dados inválidos.'})
     }
 
+    let idCliente
     try {
         const decodedToken = jwt.verify(refreshToken, JWT_SECRET)
-        const idCliente = decodedToken.id
+        idCliente = decodedToken.id
 
         const evento = await prisma.evento.findUnique({
             where: {
-                id: idEvento,
-                idCliente
+                id: idEvento
             }
         })
-
-        if (!evento.quantidadeInscritos >= evento.maximoInscritos) {
-            return res.status(400).json({ erro: 'Número máximo de inscrições atingido.' })
-        }
 
         if (!evento) {
             return res.status(404).json({ erro: 'Evento não encontrado.' })
@@ -96,14 +84,35 @@ const inscEventClient = async (req, res) => {
             return res.status(404).json({ erro: 'Cliente não encontrado.' })
         }
 
-        const inscricao = await prisma.inscricao.create({
+        const inscrito = await prisma.InscricaoEvento.findFirst({
+            where: {
+                idEvento,
+                idCliente
+            }
+        })
+
+        if(inscrito){
+            return res.status(404).json({ erro: 'Cliente já inscrito no evento.' })
+        }
+
+        const inscricao = await prisma.InscricaoEvento.create({
             data: {
                 idEvento,
                 idCliente
             }
         })
 
-        return res.status(201).json({ sucesso: 'Inscrição realizada com sucesso.', inscricao })
+        await prisma.evento.update({
+            where: { id: idEvento },
+            data: {
+                quantidadeInscritos: {
+                    increment: 1
+                }
+            }
+        })
+
+
+        return res.status(201).json({ sucesso: 'Inscrição realizada com sucesso.' })
     } catch (error) {
         return res.status(500).json({ erro: 'Erro ao realizar inscrição.', detalhes: error.message })
     }
@@ -112,8 +121,8 @@ const inscEventClient = async (req, res) => {
 
 // DESINSCREVE O CLIENTE DE EVENTOS
 const desinscEventClient = async (req, res) => {
-    const {idEvento, idCliente, refreshToken} = req.body
-    if(!idEvento || !idCliente || !refreshToken){
+    const {idEvento, refreshToken} = req.body
+    if(!idEvento || !refreshToken){
         return res.status(400).json({erro: 'Dados inválidos.'})
     }
 
@@ -124,7 +133,6 @@ const desinscEventClient = async (req, res) => {
         const evento = await prisma.evento.findUnique({
             where: {
                 id: idEvento,
-                idCliente
             }
         })
 
@@ -140,25 +148,61 @@ const desinscEventClient = async (req, res) => {
             return res.status(404).json({ erro: 'Cliente não encontrado.' })
         }
 
-        const inscricao = await prisma.inscricao.delete({
+        const idInscricao = await prisma.InscricaoEvento.findFirst({
+            where:{
+                idEvento,
+                idCliente
+            }
+        })
+
+        if(!idInscricao){
+            return res.status(404).json({ erro: 'Cliente não inscrito no evento.' })
+        }
+
+        const inscricao = await prisma.InscricaoEvento.delete({
             where: {
-                idEvento_idCliente: {
-                    idEvento,
-                    idCliente
+                id: idInscricao.id
+            }
+        })
+
+        await prisma.evento.update({
+            where: { id: idEvento },
+            data: {
+                quantidadeInscritos: {
+                    decrement: 1
                 }
             }
         })
 
-        return res.status(200).json({ sucesso: 'Desinscrição realizada com sucesso.', inscricao })
+        const atividades = await prisma.atividade.findMany({
+            where:{
+                idEvento
+            },
+            select:{
+                id: true
+            }
+        })
+
+        const idsAtividades = atividades.map(a => a.id)
+
+
+        await prisma.InscricaoAtividade.deleteMany({
+            where:{
+                idCliente,
+                idAtividade: {in: idsAtividades}
+            }
+        })
+
+        return res.status(200).json({ sucesso: 'Desinscrição realizada com sucesso.' })
     } catch (error) {
-        return res.status(500).json({ erro: 'Erro ao realizar desinscrição.', detalhes: error.message })
+        return res.status(500).json({ erro: 'Erro ao realizar desinscrição.', detalhes: error })
     }
 }
 
 // INSCREVE O CLIENTE EM ATIVIDADES
 const inscAtvClient = async (req, res) => {
-    const {idAtividade, idCliente, refreshToken} = req.body
-    if(!idAtividade || !idCliente || !refreshToken){
+    const {idAtividade, refreshToken} = req.body
+    if(!idAtividade || !refreshToken){
         return res.status(400).json({erro: 'Dados inválidos.'})
     }
     try {
@@ -168,13 +212,36 @@ const inscAtvClient = async (req, res) => {
         const atividade = await prisma.atividade.findUnique({
             where: {
                 id: idAtividade,
-                idCliente
             }
         })
 
         if (!atividade) {
             return res.status(404).json({ erro: 'Atividade não encontrada.' })
         }
+
+        const inscrito = await prisma.InscricaoAtividade.findFirst({
+            where: {
+                idAtividade,
+                idCliente
+            }
+        })
+
+        if(inscrito){
+            return res.status(404).json({ erro: 'Cliente já inscrito na atividade.' })
+        }
+
+        if (atividade.quantidadeInscritos >= atividade.maximoInscritos) {
+            return res.status(400).json({ erro: 'Número máximo de inscrições atingido.' })
+        }
+
+        await prisma.atividade.update({
+            where: { id: idAtividade },
+            data: {
+                quantidadeInscritos: {
+                    increment: 1
+                }
+            }
+        })
 
         const cliente = await prisma.cliente.findUnique({
             where: { id: idCliente }
@@ -184,14 +251,25 @@ const inscAtvClient = async (req, res) => {
             return res.status(404).json({ erro: 'Cliente não encontrado.' })
         }
 
-        const inscricaoAtividade = await prisma.inscricaoAtividade.create({
+        const idInscricao = await prisma.InscricaoEvento.findFirst({
+            where:{
+                idEvento: atividade.idEvento,
+                idCliente
+            }
+        })
+
+        if(!idInscricao){
+            return res.status(404).json({ erro: 'Cliente não inscrito no evento.' })
+        }
+
+        const inscricaoAtividade = await prisma.InscricaoAtividade.create({
             data: {
                 idAtividade,
                 idCliente
             }
         })
 
-        return res.status(201).json({ sucesso: 'Inscrição na atividade realizada com sucesso.', inscricaoAtividade })
+        return res.status(201).json({ sucesso: 'Inscrição na atividade realizada com sucesso.' })
     } catch (error) {
         return res.status(500).json({ erro: 'Erro ao realizar inscrição na atividade.', detalhes: error.message })
     }
@@ -199,8 +277,8 @@ const inscAtvClient = async (req, res) => {
 
 // DESINSCREVE O CLIENTE EM ATIVIDADES
 const desinscAtvClient = async (req, res) => {
-    const {idAtividade, idCliente, refreshToken} = req.body
-    if(!idAtividade || !idCliente || !refreshToken){
+    const {idAtividade, refreshToken} = req.body
+    if(!idAtividade || !refreshToken){
         return res.status(400).json({erro: 'Dados inválidos.'})
     }
 
@@ -211,7 +289,6 @@ const desinscAtvClient = async (req, res) => {
         const atividade = await prisma.atividade.findUnique({
             where: {
                 id: idAtividade,
-                idCliente
             }
         })
 
@@ -227,16 +304,34 @@ const desinscAtvClient = async (req, res) => {
             return res.status(404).json({ erro: 'Cliente não encontrado.' })
         }
 
-        const inscricaoAtividade = await prisma.inscricaoAtividade.delete({
+        const idInscricao = await prisma.InscricaoAtividade.findFirst({
+            where:{
+                idAtividade,
+                idCliente
+            }
+        })
+
+        if(!idInscricao){
+            return res.status(404).json({ erro: 'Cliente não inscrito na atividade.' })
+        }
+
+        const inscricaoAtividade = await prisma.InscricaoAtividade.delete({
             where: {
-                idAtividade_idCliente: {
-                    idAtividade,
-                    idCliente
+                id: idInscricao.id
+            }
+        })
+
+        await prisma.atividade.update({
+            where: { id: idAtividade },
+            data: {
+                quantidadeInscritos: {
+                    decrement: 1
                 }
             }
         })
 
-        return res.status(200).json({ sucesso: 'Desinscrição na atividade realizada com sucesso.', inscricaoAtividade })
+
+        return res.status(200).json({ sucesso: 'Desinscrição na atividade realizada com sucesso.' })
     } catch (error) {
         return res.status(500).json({ erro: 'Erro ao realizar desinscrição na atividade.', detalhes: error.message })
     }
@@ -244,19 +339,21 @@ const desinscAtvClient = async (req, res) => {
 
 // EDITA PERFIL DO CLIENTE
 const editProfileClient = async (req, res) => {
-    const { id, nome, email, senha, refreshToken } = req.body
-    if (!id || !refreshToken) {
+    const { nome, email, senha, refreshToken } = req.body
+    if (!refreshToken) {
         return res.status(400).json({ erro: 'Dados inválidos.' })
     }
     try {
         const decodedToken = jwt.verify(refreshToken, JWT_SECRET)
-        const idAdmin = decodedToken.id
+        const idCliente = decodedToken.id
 
         const cliente = await prisma.cliente.findUnique({
-            where: { id }
+            where: { 
+                id: idCliente
+            }
         })
 
-        if (!cliente || cliente.id !== idAdmin) {
+        if (!cliente || cliente.id !== idCliente) {
             return res.status(404).json({ erro: 'Cliente não encontrado.' })
         }
 
@@ -266,11 +363,11 @@ const editProfileClient = async (req, res) => {
         if (senha) updatedData.senha = await bcrypt.hash(senha, 10)
 
         const updatedCliente = await prisma.cliente.update({
-            where: { id },
+            where: { id: idCliente },
             data: updatedData
         })
 
-        return res.status(200).json({ sucesso: 'Perfil atualizado com sucesso.', cliente: updatedCliente })
+        return res.status(200).json({ sucesso: 'Perfil atualizado com sucesso.'})
     } catch (error) {
         return res.status(500).json({ erro: 'Erro ao atualizar perfil.', detalhes: error.message })
     }
@@ -278,8 +375,8 @@ const editProfileClient = async (req, res) => {
 
 // VER PERFIL DO CLIENTE
 const viewProfileClient = async (req, res) => {
-    const { id, refreshToken } = req.body
-    if (!id || !refreshToken) {
+    const { refreshToken } = req.body
+    if ( !refreshToken) {
         return res.status(400).json({ erro: 'Dados inválidos.' })
     }
     try {
@@ -287,12 +384,14 @@ const viewProfileClient = async (req, res) => {
         const idCliente = decodedToken.id
 
         const cliente = await prisma.cliente.findUnique({
-            where: { id }
+            where: { id: idCliente }
         })
 
         if (!cliente || cliente.id !== idCliente) {
             return res.status(404).json({ erro: 'Cliente não encontrado.' })
         }
+
+        cliente.senha = ""
 
         return res.status(200).json({ sucesso: 'Perfil encontrado.', cliente })
     } catch (error) {
@@ -302,15 +401,15 @@ const viewProfileClient = async (req, res) => {
 
 // VER ATIVIADES INSCRITAS DO CLIENTE
 const viewinscAtvClient = async (req, res) => {
-    const { idCliente, refreshToken } = req.body
-    if (!idCliente || !refreshToken) {
+    const { refreshToken } = req.body
+    if (!refreshToken) {
         return res.status(400).json({ erro: 'Dados inválidos.' })
     }
     try {
         const decodedToken = jwt.verify(refreshToken, JWT_SECRET)
         const idCliente = decodedToken.id
 
-        const inscricoesAtividades = await prisma.inscricaoAtividade.findMany({
+        const inscricoesAtividades = await prisma.InscricaoAtividade.findMany({
             where: { idCliente },
             include: {
                 atividade: true
@@ -329,15 +428,15 @@ const viewinscAtvClient = async (req, res) => {
 
 // VER EVENTOS INSCRITOS DO CLIENTE
 const viewInscEventClient = async (req, res) => {
-    const { idCliente, refreshToken } = req.body
-    if (!idCliente || !refreshToken) {
+    const { refreshToken } = req.body
+    if (!refreshToken) {
         return res.status(400).json({ erro: 'Dados inválidos.' })
     }
     try {
         const decodedToken = jwt.verify(refreshToken, JWT_SECRET)
         const idCliente = decodedToken.id
 
-        const inscricoesEventos = await prisma.inscricao.findMany({
+        const inscricoesEventos = await prisma.InscricaoEvento.findMany({
             where: { idCliente },
             include: {
                 evento: true

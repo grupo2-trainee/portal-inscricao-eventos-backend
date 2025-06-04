@@ -54,8 +54,67 @@ const logAdmin = async(req, res) =>{
     }
 }
 
+const viewProfileAdmin = async(req, res) => {
+    const { refreshToken } = req.body
+    if(!refreshToken){
+        return res.status(400).json({erro: 'Dados inválidos.'})
+    }
+    try{
+        const decodedToken = jwt.verify(refreshToken, JWT_SECRET)
+        const idAdmin = decodedToken.id
+
+        const administrador = await prisma.cliente.findUnique({
+            where: { id: idAdmin },
+        })
+
+        if(!administrador || administrador.tipo !== 'ADMIN'){
+            return res.status(403).json({erro: 'Administrador não encontrado.'})
+        }
+
+        administrador.senha = ""
+        return res.status(200).json({sucesso: 'Perfil do administrador recuperado com sucesso.', administrador})
+    } catch (error) {
+        return res.status(500).json({erro: 'Erro ao procurar perfil do administrador.', detalhes: error.message})
+    }
+}
+
+const editProfileAdmin = async(req, res) => {
+    const { nome, email, senha, refreshToken } = req.body
+    if(!refreshToken){
+        return res.status(400).json({erro: 'Dads inválidos.'})
+    }
+    try {
+        const decodedToken = jwt.verify(refreshToken, JWT_SECRET)
+        const idAdmin = decodedToken.id
+
+        const administrador = await prisma.administrador.findUnique({
+            where: { id: idAdmin },
+        })
+
+        if(!administrador || administrador.tipo !== 'ADMIN'){
+            return res.status(403).json({erro: 'Administrador não encontrado.'})
+        }
+
+        const updatedData = {}
+        if(nome) updatedData.nome = nome
+        if(email) updatedData.email = email
+        if(senha) updatedData.senha = await bcrypt.hash(senha, 10)
+
+        const updatedAdmin = await prisma.administrador.update({
+            where: { id: idAdmin },
+            data: updatedData,
+        })
+
+        return res.status(200).json({sucesso: 'Perfil do administrador atualizado com sucesso.'})
+    } catch (error) {
+        return res.status(500).json({erro: 'Erro ao atualizar perfil do administrador.', detalhes: error.message})
+    }
+}
+
 // EXPORTAÇÕES
 export default{
+    editProfileAdmin,
+    viewProfileAdmin,
     cadAdmin,
-    logAdmin,
+    logAdmin
 }

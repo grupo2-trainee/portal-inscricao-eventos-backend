@@ -11,11 +11,17 @@ const authTokenAdmin = async (req, res, next) => {
     }
 
     let idAdmin
+    let type
     try {
         const decodedToken = jwt.verify(refreshToken, JWT_SECRET)
         idAdmin = decodedToken.id
+        type = decodedToken.type
     } catch (err) {
         return res.status(403).json({ erro: 'Token inválido ou expirado.' })
+    }
+
+    if(!type || type != "ADMIN"){
+        return res.status(403).json({erro: "Usuário não possui permissão."})
     }
 
     const idUsuario = await prisma.administrador.findUnique({where: { id: idAdmin }})
@@ -34,11 +40,17 @@ const authTokenClient = async (req, res, next) => {
     }
 
     let idCliente
+    let type
     try {
         const decodedToken = jwt.verify(refreshToken, JWT_SECRET)
         idCliente = decodedToken.id
+        type = decodedToken.type
     } catch (err) {
         return res.status(403).json({ erro: 'Token inválido ou expirado.' })
+    }
+
+    if(!type || type != "CLIENT"){
+        return res.status(403).json({erro: "Usuário não possui permissão."})
     }
 
     const idUsuario = await prisma.cliente.findUnique({where: { id: idCliente }})

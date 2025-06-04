@@ -249,7 +249,13 @@ const listEvent = async (req, res) => {
         include: {atividades: true}
     })
 
-    return res.status(200).json({"Lista de eventos": eventos})
+    const quantidadeEventos = eventos.length
+
+    const totalInscritos = eventos.reduce((soma, evento)=>{
+        return soma + (evento.quantidadeInscritos || 0)
+    }, 0)
+
+    return res.status(200).json({"Lista de eventos": eventos, "Quantidade de eventos": quantidadeEventos, "Total de inscritos": totalInscritos})
 }
 
 // EXPORTAÇÕES

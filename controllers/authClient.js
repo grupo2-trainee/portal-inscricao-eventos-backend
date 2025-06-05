@@ -15,24 +15,24 @@ const cadClient = async(req, res) => {
     }
     const senhaCript = await bcrypt.hash(senha, 10)
 
-     const cadastradoCliente = await prisma.cliente.findMany({
+    const cadastradoCliente = await prisma.cliente.findUnique({
         where: {email},
     })
 
-    const cadastradoAdmin = await prisma.administrador.findMany({
+    const cadastradoAdmin = await prisma.administrador.findUnique({
         where: {email},
     })
 
     if(cadastradoCliente || cadastradoAdmin){
-        res.status(400).json({erro: 'Erro, esse email já foi cadastrado, por favor use outro.'})
+        return res.status(400).json({erro: 'Erro, esse email já foi cadastrado, por favor use outro.'})
     }
     try{
         const novoUsuario = await prisma.cliente.create({
             data:{nome, email, senha: senhaCript}
         })
-        res.status(201).json({sucesso: "Usuário criado com sucesso."})
+        return res.status(201).json({sucesso: "Usuário criado com sucesso."})
     }catch(error){
-        res.status(500).json({erro: 'Erro ao criar novo usuário cliente.', detalhes: error})
+        return res.status(500).json({erro: 'Erro ao criar novo usuário cliente.', detalhes: error})
     }
 }
 

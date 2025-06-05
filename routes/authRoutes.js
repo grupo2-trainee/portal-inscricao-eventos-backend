@@ -6,8 +6,7 @@ const router = express.Router()
 
 // ROTAS
 router.post('/registerCliente', authClient.cadClient)
-router.post('/loginCliente', authClient.logClient)
 router.post('/registerAdmin', authAdmin.cadAdmin)
-router.post('/loginAdmin', authAdmin.logAdmin)
+router.post('/login', authAdmin.logAdmin)
 
 export default router

@@ -214,6 +214,8 @@ const ediEvent = async (req, res) => {
 
                 } 
                 else {
+                    atividadeData.idEvento = id
+                    atividadeData.quantidadeInscritos = 0
                     await prisma.atividade.create({ data: atividadeData })
                 }
             }

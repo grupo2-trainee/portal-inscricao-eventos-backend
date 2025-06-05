@@ -14,6 +14,18 @@ const cadClient = async(req, res) => {
         res.status(400).json({erro: 'Erro, nome deve ter no mínimo 4 caracteres.'})
     }
     const senhaCript = await bcrypt.hash(senha, 10)
+
+     const cadastradoCliente = await prisma.cliente.findMany({
+        where: {email},
+    })
+
+    const cadastradoAdmin = await prisma.administrador.findMany({
+        where: {email},
+    })
+
+    if(cadastradoCliente || cadastradoAdmin){
+        res.status(400).json({erro: 'Erro, esse email já foi cadastrado, por favor use outro.'})
+    }
     try{
         const novoUsuario = await prisma.cliente.create({
             data:{nome, email, senha: senhaCript}
@@ -22,36 +34,6 @@ const cadClient = async(req, res) => {
     }catch(error){
         res.status(500).json({erro: 'Erro ao criar novo usuário cliente.', detalhes: error})
     }
-}
-
-// LOGIN USUÁRIO CLIENTE
-const logClient = async(req, res) => {
-    const { email, senha } = req.body
-    if(!email || !senha){
-        res.status(400).json({erro: 'Email e senha são obrigatórios.'})
-    }
-    if(senha.length < 8){
-        res.status(400).json({erro: 'Erro, senha deve ter no mínimo 8 caracteres.'})
-    }
-
-    try{
-        const usuario = await prisma.Cliente.findUnique({where: { email }})
-        if(!usuario){
-            res.status(404).json({erro: 'Usuário não encontrado.'})
-        }
-
-        const senhaValida = await bcrypt.compare(senha, usuario.senha)
-        if(!senhaValida){
-            res.status(401).json({erro: 'Senha inválida.'})
-        }
-
-        const refreshToken = jwt.sign({ id: usuario.id, type: "CLIENT" }, JWT_SECRET, { expiresIn: '8h' });
-
-        res.status(200).json({sucesso: "Login realizado com sucesso.", refreshToken})
-    }catch(error){
-        res.status(500).json({erro: 'Erro ao realizar login.', detalhes: error})
-    }
-
 }
 
 // INSCREVE O CLIENTE EM EVENTOS
@@ -262,6 +244,22 @@ const inscAtvClient = async (req, res) => {
             return res.status(404).json({ erro: 'Cliente não inscrito no evento.' })
         }
 
+        const conflitos = await prisma.inscricaoAtividade.findMany({
+            where: { idCliente },
+            include: {atividade: true}
+        })
+
+        const conflito = conflitos.find(a => {
+            return (
+                new Date(atividade.dataInicio) < new Date(a.atividade.dataFim) &&
+                new Date(atividade.dataFim) > new Date(a.atividade.dataInicio)
+            )
+        })
+
+        if (conflito) {
+            return res.status(400).json({ erro: 'Horário conflitante.'})
+        }
+
         const inscricaoAtividade = await prisma.InscricaoAtividade.create({
             data: {
                 idAtividade,
@@ -464,5 +462,4 @@ export default{
     desinscEventClient,
     inscEventClient,
     cadClient,
-    logClient
 }

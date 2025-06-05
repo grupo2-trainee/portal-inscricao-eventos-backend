@@ -258,8 +258,42 @@ const listEvent = async (req, res) => {
     return res.status(200).json({"Lista de eventos": eventos, "Quantidade de eventos": quantidadeEventos, "Total de inscritos": totalInscritos})
 }
 
+const viewInscEvent = async (req, res) => {
+  const { idEvento, refreshToken } = req.body;
+  if (!idEvento || !refreshToken) {
+    return res.status(400).json({ erro: 'Dados inválidos.' });
+  }
+
+  try {
+    const decodedToken = jwt.verify(refreshToken, JWT_SECRET);
+    const idAdmin = decodedToken.id;
+
+    const evento = await prisma.evento.findUnique({
+      where: { id: idEvento },
+      include: {
+        _count: {
+          select: {
+            inscricoes: true
+          }
+        }
+      }
+    });
+
+    if (!evento || evento.idAdmin !== idAdmin) {
+      return res.status(404).json({ erro: 'Evento não encontrado ou acesso negado.' });
+    }
+
+    return res.status(200).json({ totalInscritos: evento._count.inscricoes });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ erro: 'Erro ao buscar evento.', detalhes: error.message });
+  }
+};
+
 // EXPORTAÇÕES
 export default {
+    viewInscEvent,
     ediEvent,
     remEvent,
     cadEvent,

@@ -111,8 +111,50 @@ const editProfileAdmin = async(req, res) => {
     }
 }
 
+const viewInscEvent = async (req, res) => {
+  const { refreshToken } = req.body
+  if (!refreshToken) {
+    return res.status(403).json({ erro: 'Dados inválidos.' });
+  }
+
+  try {
+    const decodedToken = jwt.verify(refreshToken, JWT_SECRET)
+    const idAdmin = decodedToken.id
+
+    const eventos = await prisma.evento.findMany({
+      where: { idAdmin },
+      include: {
+        _count: {
+          select: {
+            inscricoes: true
+          }
+        }
+      }
+    })
+
+    if (!eventos || eventos.length === 0) {
+      return res.status(404).json({ erro: 'Nenhum evento encontrado.' })
+    }
+
+    const eventosComTotal = eventos.map(ev => ({
+      id: ev.id,
+      nome: ev.nome,
+      data: ev.data,
+      totalInscritos: ev._count.inscricoes
+    }));
+
+    return res.status(200).json({ eventos: eventosComTotal })
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ erro: 'Erro ao procurar eventos.', detalhes: error.message })
+  }
+}
+
+
 // EXPORTAÇÕES
 export default{
+    viewInscEvent,
     editProfileAdmin,
     viewProfileAdmin,
     cadAdmin,

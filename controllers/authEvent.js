@@ -260,7 +260,8 @@ const listEvent = async (req, res) => {
     return res.status(200).json({"Lista de eventos": eventos, "Quantidade de eventos": quantidadeEventos, "Total de inscritos": totalInscritos})
 }
 
-const viewInscEvent = async (req, res) => {
+// VER INSCRITOS EM ATIVIDADES
+const viewInscAtv = async (req, res) => {
   const { idEvento, refreshToken } = req.body;
   if (!idEvento || !refreshToken) {
     return res.status(400).json({ erro: 'Dados inválidos.' });
@@ -295,7 +296,7 @@ const viewInscEvent = async (req, res) => {
 
 // EXPORTAÇÕES
 export default {
-    viewInscEvent,
+    viewInscAtv,
     ediEvent,
     remEvent,
     cadEvent,

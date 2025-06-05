@@ -146,6 +146,7 @@ const editProfileAdmin = async(req, res) => {
     }
 }
 
+// VER QUANTIDADE DE INSCRIÇÕES POR EVENTO
 const viewInscEvent = async (req, res) => {
   const { refreshToken } = req.body
   if (!refreshToken) {

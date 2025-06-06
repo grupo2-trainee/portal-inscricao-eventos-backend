@@ -18,6 +18,7 @@ router.delete('/desinscAtvClient', authTokens.authTokenClient, authClient.desins
 // ROTAS PERFIL
 router.get('/verPerfilClient', authTokens.authTokenClient, authClient.viewProfileClient)
 router.patch('/editPerfilClient', authTokens.authTokenClient, authClient.editProfileClient)
+router.delete('/deleteClient', authTokens.authTokenClient, authClient.deleteCliente)
 
 
 

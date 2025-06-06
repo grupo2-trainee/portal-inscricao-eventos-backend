@@ -1,12 +1,25 @@
 import { PrismaClient } from '../generated/prisma/index.js'
+import { fileURLToPath } from 'url'
+import fs from 'fs'
 import jwt from 'jsonwebtoken'
+import path from 'path'
 const JWT_SECRET = process.env.JWT_SECRET || 'includeJr'
 const prisma = new PrismaClient()
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 // CADASTRAR EVENTO E ATIVIDADES
 const cadEvent = async (req, res) => {
-    const { nome, descricao, dataInicio, dataFim, categoria, cidade, imagemURL, tipo, refreshToken, atividades} = req.body
+    const { nome, descricao, dataInicio, dataFim, categoria, cidade, tipo, refreshToken, atividades} = req.body
 
+    const imagemFile = req.file
+
+    if (!imagemFile) {
+        return res.status(400).json({ erro: 'Imagem do evento é obrigatória.' })
+    }
+
+    const imagemURL = `/uploads/${imagemFile.filename}`
+    
     if (!nome || nome.length < 4) {
         return res.status(400).json({ erro: 'Nome do evento deve ter no mínimo 4 caracteres.' })
     }
@@ -130,7 +143,10 @@ const remEvent = async(req, res)=>{
 
 // EDITAR EVENTO E ATIVIDADES
 const ediEvent = async (req, res) => {
-    const {id,nome,descricao,dataInicio,dataFim,categoria,cidade,tipo,imagemURL,atividades,atividadesRemovidas,refreshToken} = req.body
+    let {id,nome,descricao,dataInicio,dataFim,categoria,cidade,tipo,atividades,atividadesRemovidas,refreshToken} = req.body
+
+    id = parseInt(id)
+    const imagemFile = req.file;
 
     if (!id) {
         return res.status(400).json({ erro: 'Dados inválidos.' })
@@ -160,10 +176,15 @@ const ediEvent = async (req, res) => {
     if (categoria != null) dataEdit.categoria = categoria
     if (cidade != null) dataEdit.cidade = cidade
     if (tipo != null) dataEdit.tipo = tipo
-    if (imagemURL != null) dataEdit.imagemURL = imagemURL
 
     try {
         const evento = await prisma.evento.findUnique({ where: { id } })
+        if (imagemFile != null){
+            dataEdit.imagemURL = `/uploads/${imagemFile.filename}`  
+            const caminhoAntigo = path.join(__dirname, '..', 'uploads', path.basename(evento.imagemURL))
+            fs.unlink(caminhoAntigo, (err) => {})
+        }   
+
 
         if (!evento || evento.idAdmin !== idAdmin) {
             return res.status(404).json({ erro: 'Evento não encontrado ou acesso negado.' })
@@ -260,43 +281,97 @@ const listEvent = async (req, res) => {
     return res.status(200).json({"Lista de eventos": eventos, "Quantidade de eventos": quantidadeEventos, "Total de inscritos": totalInscritos})
 }
 
-// VER INSCRITOS EM ATIVIDADES
-const viewInscAtv = async (req, res) => {
-  const { idEvento, refreshToken } = req.body;
+// VER INSCRITOS EVENTO
+const viewInscEvent = async (req, res) => {
+  const { idEvento, refreshToken } = req.body
+
   if (!idEvento || !refreshToken) {
-    return res.status(400).json({ erro: 'Dados inválidos.' });
+    return res.status(400).json({ erro: 'Dados inválidos.' })
+  }
+
+  try {
+    const decodedToken = jwt.verify(refreshToken, JWT_SECRET)
+    const idAdmin = decodedToken.id
+
+    const evento = await prisma.evento.findUnique({
+      where: { id: idEvento },
+      include: {
+        inscricoes: {
+          select: {
+            cliente: {
+              select: {
+                nome: true,
+                email: true
+              }
+            }
+          }
+        }
+      }
+    })
+
+
+    const inscritos = evento.inscricoes.map(i => i.cliente)
+    const totalInscritos = evento.inscricoes.length;
+
+    if (!evento || evento.idAdmin !== idAdmin) {
+      return res.status(404).json({ erro: 'Evento não encontrado ou acesso negado.' })
+    }
+
+
+    return res.status(200).json({ inscritos, totalInscritos });
+
+  } catch (error) {
+    return res.status(500).json({ erro: 'Erro ao buscar evento.', detalhes: error.message })
+  }
+}
+
+// VER INSCRITOS ATIVIDADE
+const viewInscAtv = async (req, res) => {
+  const { idAtividade, refreshToken } = req.body
+
+  if (!idAtividade || !refreshToken) {
+    return res.status(400).json({ erro: 'Dados inválidos.' })
   }
 
   try {
     const decodedToken = jwt.verify(refreshToken, JWT_SECRET);
     const idAdmin = decodedToken.id;
 
-    const evento = await prisma.evento.findUnique({
-      where: { id: idEvento },
+    const atividade = await prisma.atividade.findUnique({
+      where: { id: idAtividade },
       include: {
-        _count: {
+        evento: true,
+        inscricoes: {
           select: {
-            inscricoes: true
+            cliente: {
+              select: {
+                nome: true,
+                email: true
+              }
+            }
           }
         }
       }
-    });
+    })
 
-    if (!evento || evento.idAdmin !== idAdmin) {
-      return res.status(404).json({ erro: 'Evento não encontrado ou acesso negado.' });
+    if (!atividade || atividade.evento.idAdmin !== idAdmin) {
+      return res.status(404).json({ erro: 'Atividade não encontrada ou acesso negado.' })
     }
 
-    return res.status(200).json({ totalInscritos: evento._count.inscricoes });
+    const inscritos = atividade.inscricoes.map(i => i.cliente)
+    const totalInscritos = atividade.inscricoes.length;
+
+    return res.status(200).json({ inscritos, totalInscritos })
+
   } catch (error) {
-    return res
-      .status(500)
-      .json({ erro: 'Erro ao buscar evento.', detalhes: error.message });
+    return res.status(500).json({ erro: 'Erro ao buscar inscritos.', detalhes: error.message })
   }
-};
+}
 
 // EXPORTAÇÕES
 export default {
     viewInscAtv,
+    viewInscEvent,
     ediEvent,
     remEvent,
     cadEvent,

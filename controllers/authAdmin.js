@@ -1,8 +1,13 @@
 import { PrismaClient } from '../generated/prisma/index.js'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
+import { fileURLToPath } from 'url'
+import fs from 'fs'
+import path from 'path'
+const JWT_SECRET = process.env.JWT_SECRET || 'includeJr'
 const prisma = new PrismaClient()
-const JWT_SECRET = process.JWT_SECRET || 'includeJr'
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 // CADASTRAR USUÁRIO ADMINISTRADOR
 const cadAdmin = async(req, res) => {
@@ -146,51 +151,77 @@ const editProfileAdmin = async(req, res) => {
     }
 }
 
-// VER QUANTIDADE DE INSCRIÇÕES POR EVENTO
-const viewInscEvent = async (req, res) => {
+// APAGAR PERFIL ADMINISTRADOR
+const deleteAdmin = async (req, res) => {
   const { refreshToken } = req.body
+
   if (!refreshToken) {
-    return res.status(403).json({ erro: 'Dados inválidos.' });
+    return res.status(403).json({ erro: 'Token não fornecido.' });
   }
 
   try {
-    const decodedToken = jwt.verify(refreshToken, JWT_SECRET)
-    const idAdmin = decodedToken.id
+    const decoded = jwt.verify(refreshToken, JWT_SECRET);
+    const idAdmin = decoded.id
 
     const eventos = await prisma.evento.findMany({
       where: { idAdmin },
       include: {
-        _count: {
-          select: {
+        atividades: {
+          include: {
             inscricoes: true
           }
-        }
+        },
+        inscricoes: true
       }
     })
 
-    if (!eventos || eventos.length === 0) {
-      return res.status(404).json({ erro: 'Nenhum evento encontrado.' })
+    for (const evento of eventos) {
+      for (const atividade of evento.atividades) {
+        await prisma.inscricaoAtividade.deleteMany({
+          where: { idAtividade: atividade.id }
+        })
+      }
     }
 
-    const eventosComTotal = eventos.map(ev => ({
-      id: ev.id,
-      nome: ev.nome,
-      data: ev.data,
-      totalInscritos: ev._count.inscricoes
-    }));
+    for (const evento of eventos) {
+      await prisma.atividade.deleteMany({
+        where: { idEvento: evento.id }
+      })
+    }
 
-    return res.status(200).json({ eventos: eventosComTotal })
+    for (const evento of eventos) {
+      if (evento.imagemURL) {
+        const imagemPath = path.join(__dirname, '..', evento.imagemURL);
+        if (fs.existsSync(imagemPath)) {
+          fs.unlinkSync(imagemPath);
+        }
+      }
+    }
+
+    for (const evento of eventos) {
+      await prisma.inscricaoEvento.deleteMany({
+        where: { idEvento: evento.id }
+      })
+    }
+
+    await prisma.evento.deleteMany({
+      where: { idAdmin }
+    })
+
+    await prisma.administrador.delete({
+      where: { id: idAdmin }
+    })
+
+    return res.status(200).json({ sucesso: 'Perfil e todos os dados associados foram removidos com sucesso.' });
+
   } catch (error) {
-    return res
-      .status(500)
-      .json({ erro: 'Erro ao procurar eventos.', detalhes: error.message })
+    return res.status(500).json({erro: 'Erro ao remover.', detalhes: error.message})
   }
 }
 
-
 // EXPORTAÇÕES
 export default{
-    viewInscEvent,
+    deleteAdmin,
     editProfileAdmin,
     viewProfileAdmin,
     cadAdmin,

@@ -101,6 +101,38 @@ const inscEventClient = async (req, res) => {
     
 }
 
+// APAGAR PERFIL CLIENTE
+const deleteCliente = async (req, res) => {
+    const { refreshToken } = req.body
+
+    if (!refreshToken) {
+        return res.status(403).json({ erro: 'Token não fornecido.' })
+    }
+
+    try {
+        const decoded = jwt.verify(refreshToken, JWT_SECRET);
+        const idCliente = decoded.id
+
+        await prisma.inscricaoEvento.deleteMany({
+        where: { idCliente }
+        })
+
+        await prisma.inscricaoAtividade.deleteMany({
+        where: { idCliente }
+        })
+
+        await prisma.cliente.delete({
+        where: { id: idCliente }
+        })
+
+        return res.status(200).json({ sucesso: 'Perfil e todas as inscrições removidas com sucesso.' })
+
+    } 
+    catch (error) {
+            return res.status(500).json({erro: 'Erro ao remover cliente.', detalhes: error.message})
+        }
+}
+
 // DESINSCREVE O CLIENTE DE EVENTOS
 const desinscEventClient = async (req, res) => {
     const {idEvento, refreshToken} = req.body
@@ -462,4 +494,5 @@ export default{
     desinscEventClient,
     inscEventClient,
     cadClient,
+    deleteCliente
 }

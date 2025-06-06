@@ -11,11 +11,17 @@ const authTokenAdmin = async (req, res, next) => {
     }
 
     let idAdmin
+    let type
     try {
         const decodedToken = jwt.verify(refreshToken, JWT_SECRET)
         idAdmin = decodedToken.id
+        type = decodedToken.type
     } catch (err) {
         return res.status(403).json({ erro: 'Token inválido ou expirado.' })
+    }
+
+    if(!type || type != "ADMIN"){
+        return res.status(403).json({erro: "Usuário não possui permissão."})
     }
 
     const idUsuario = await prisma.administrador.findUnique({where: { id: idAdmin }})
@@ -27,28 +33,32 @@ const authTokenAdmin = async (req, res, next) => {
 }
 
 // AUTENTICAÇÃO DE LOGIN CLIENTE
-const authTokenClient = (req, res) => {
-    const token = req.headers['authorization']   
-
-    if (!token){
-        res.status(401).json({ erro: 'Usuário não autenticado' })
+const authTokenClient = async (req, res, next) => {
+    const { refreshToken } = req.body
+    if(!refreshToken){
+        return res.status(403).json({erro: "Usuário sem token."})
     }
 
-    const decodedToken = jwt.decode(token)
-
-    if(decodedToken.type != "CLIENT"){
-        res.status(403).json({erro: 'Autenticação negada'})
+    let idCliente
+    let type
+    try {
+        const decodedToken = jwt.verify(refreshToken, JWT_SECRET)
+        idCliente = decodedToken.id
+        type = decodedToken.type
+    } catch (err) {
+        return res.status(403).json({ erro: 'Token inválido ou expirado.' })
     }
 
-    jwt.verify(token, JWT_SECRET, (err) => {
-    if (err) {
-        res.status(403).json({ erro: 'Token de autenticação inválido' })
-    } 
-    
-    return res.status(200).json({
-        redirectTo: '/',
-    });
-  });
+    if(!type || type != "CLIENT"){
+        return res.status(403).json({erro: "Usuário não possui permissão."})
+    }
+
+    const idUsuario = await prisma.cliente.findUnique({where: { id: idCliente }})
+    if(!idUsuario){
+        return res.status(403).json({erro: "Usuário não autenticado."})
+    }
+
+    return next()
 };
 
 export default{

@@ -65,8 +65,18 @@ const cadEvent = async (req, res) => {
 
         const idEvento = eventoCriado.id
 
-        if (atividades && Array.isArray(atividades)) {
-            for (const atividade of atividades) {
+        let atividadesArray = []
+
+        if (atividades) {
+            try {
+                atividadesArray = JSON.parse(atividades)
+            } catch (err) {
+                return res.status(400).json({ erro: 'Formato de atividades inválido. Deve ser JSON válido.' })
+            }
+        }
+
+        if (atividadesArray && Array.isArray(atividadesArray)) {
+            for (const atividade of atividadesArray) {
                 if (!atividade.nome || !atividade.descricao || !atividade.dataInicio || !atividade.dataFim || !atividade.maximoInscritos || !atividade.localizacao) {
                     continue
                 }
@@ -147,6 +157,17 @@ const ediEvent = async (req, res) => {
 
     id = parseInt(id)
     const imagemFile = req.file;
+
+    try {
+    if (typeof atividades === 'string') {
+        atividades = JSON.parse(atividades)
+    }
+    if (typeof atividadesRemovidas === 'string') {
+        atividadesRemovidas = JSON.parse(atividadesRemovidas)
+    }
+    } catch (err) {
+        return res.status(400).json({ erro: 'Formato inválido de atividades ou atividadesRemovidas.' })
+    }
 
     if (!id) {
         return res.status(400).json({ erro: 'Dados inválidos.' })
